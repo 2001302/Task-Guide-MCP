@@ -16,7 +16,16 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration"
+    "test:integration": "jest tests/integration",
+    "test:setup": "node dist/index.js setup ./test-project",
+    "test:generate": "node dist/index.js generate ./test-project",
+    "test:clear": "node dist/index.js clear ./test-project",
+    "test:create": "node scripts/create-demo-project.js",
+    "test:cleanup": "node scripts/create-demo-project.js cleanup",
+    "test:setup-project": "npm run test:create && node dist/index.js setup ./test-project",
+    "test:generate-project": "node dist/index.js generate ./test-project",
+    "test:clear-project": "node dist/index.js clear ./test-project",
+    "test:full": "npm run test:setup-project && npm run test:generate-project && echo 'Test completed. Check ./test-project for knowledge graph files.'"
   },
   "keywords": [
     "mcp",

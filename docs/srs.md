@@ -44,11 +44,11 @@
 		- .knowledge-rule.mdc
 - generate
 	- args
-		- target 폴더 입력 필요
-	- knowledge 를 dfs 순회
-		- 하나씩 generate요청
-			- .knowledge-node.json 에 있는 file대상으로 지식그래프 생성 + 하위 폴더의 .knowledge-node.json는 관계만 주입
-			- .knowledge-rule.mdc 생성
+		- target root 폴더 입력 필요
+	- target root directory를 기준으로 dfs 순회
+		- current directory내의 소스코드 파일을 기반으로 @itseasy21/mcp-knowledge-graph을 사용하여 지식그래프 생성. 생성된 결과물이 /.knowledge-node.json이다.
+        - 만약 current directory내의 폴더가 있고 그 폴더안에 .knowledge-node폴더가 있다면 child 이므로 해당 경로만 지식그래프에 추가한다. 
+        어차피 순회 돌다가 이미 처리된 knowledge-node 이므로
 - update
 	- args
 		- git diff 입력 필요

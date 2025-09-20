@@ -13,6 +13,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import yargs from 'yargs';
 import chalk from 'chalk';
+// Note: @itseasy21/mcp-knowledge-graph library will be used in future implementation
 
 // Custom error classes
 class KnowledgeGraphError extends Error {
@@ -46,18 +47,22 @@ const server = new Server({
   version: '1.0.0',
 });
 
-// Knowledge graph data storage
+// Knowledge graph data storage (inspired by @itseasy21/mcp-knowledge-graph)
 interface KnowledgeNode {
-  id: string;
-  type: string;
-  content: string;
+  name: string;           // 고유 이름 (id 대신)
+  entityType: string;     // 엔티티 타입 (type 대신)
+  observations: string[]; // 관찰 데이터 배열 (content 대신)
+  createdAt: string;      // 생성 시간
+  version: number;        // 버전
   metadata?: Record<string, any>;
 }
 
 interface KnowledgeRelationship {
-  from: string;
-  to: string;
-  type: string;
+  from: string;           // 출발 엔티티 이름
+  to: string;             // 도착 엔티티 이름
+  relationType: string;   // 관계 타입 (type 대신)
+  createdAt: string;      // 생성 시간
+  version: number;        // 버전
   metadata?: Record<string, any>;
 }
 
@@ -68,6 +73,14 @@ let knowledgeGraph: {
   nodes: [],
   relationships: [],
 };
+
+// Supported source code file extensions
+const SOURCE_FILE_EXTENSIONS = [
+  '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cpp', '.c', '.h', '.hpp',
+  '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.m', '.mm',
+  '.vue', '.svelte', '.dart', '.r', '.jl', '.sh', '.bash', '.zsh', '.fish',
+  '.sql', '.html', '.css', '.scss', '.sass', '.less', '.xml', '.json', '.yaml', '.yml'
+];
 
 // Define tool list
 const tools = [
@@ -345,6 +358,181 @@ created: ${new Date().toISOString()}
 });
 
 /**
+ * Finds source code files in a directory
+ * @param dirPath - Directory path to search
+ * @returns Array of source code file paths
+ */
+async function findSourceFiles(dirPath: string): Promise<string[]> {
+  const sourceFiles: string[] = [];
+  
+  const findFiles = async (currentDir: string) => {
+    try {
+      const items = await readdir(currentDir, { withFileTypes: true });
+      
+      for (const item of items) {
+        if (item.isDirectory() && !item.name.startsWith('.')) {
+          // Skip common build/cache directories
+          const skipDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'coverage', '.nyc_output', '.cache', '.parcel-cache', '.vscode', '.idea', 'vendor', 'target', 'out', 'bin', 'obj'];
+          if (!skipDirs.includes(item.name)) {
+            await findFiles(join(currentDir, item.name));
+          }
+        } else if (item.isFile()) {
+          const ext = item.name.substring(item.name.lastIndexOf('.'));
+          if (SOURCE_FILE_EXTENSIONS.includes(ext)) {
+            sourceFiles.push(join(currentDir, item.name));
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new FileSystemError(
+          `Cannot read directory: ${error.message}`,
+          'currentDir'
+        );
+      }
+      throw new FileSystemError(
+        'Unknown error occurred while reading directory',
+        'currentDir'
+      );
+    }
+  };
+  
+  await findFiles(dirPath);
+  return sourceFiles;
+}
+
+/**
+ * Creates knowledge graph from source files (inspired by @itseasy21/mcp-knowledge-graph)
+ * @param sourceFiles - Array of source file paths
+ * @param dirPath - Directory path for context
+ * @returns Knowledge graph data
+ */
+async function createKnowledgeGraphFromFiles(sourceFiles: string[], dirPath: string): Promise<{ nodes: KnowledgeNode[]; relationships: KnowledgeRelationship[] }> {
+  const nodes: KnowledgeNode[] = [];
+  const relationships: KnowledgeRelationship[] = [];
+  const now = new Date().toISOString();
+  
+  for (const filePath of sourceFiles) {
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      const relativePath = filePath.replace(dirPath, '').replace(/^[\/\\]/, '');
+      const fileName = relativePath.split(/[\/\\]/).pop() || relativePath;
+      const extension = filePath.substring(filePath.lastIndexOf('.'));
+      
+      // Create file entity (inspired by @itseasy21/mcp-knowledge-graph structure)
+      const fileEntity: KnowledgeNode = {
+        name: `file_${relativePath.replace(/[\/\\]/g, '_')}`,
+        entityType: 'source_file',
+        observations: [
+          `File path: ${relativePath}`,
+          `File size: ${content.length} characters`,
+          `File extension: ${extension}`,
+          `Content preview: ${content.substring(0, 200)}...`
+        ],
+        createdAt: now,
+        version: 1,
+        metadata: {
+          path: relativePath,
+          fullPath: filePath,
+          size: content.length,
+          extension: extension
+        }
+      };
+      nodes.push(fileEntity);
+      
+      // Create relationships based on imports/dependencies
+      const importMatches = content.match(/import\s+.*\s+from\s+['"]([^'"]+)['"]/g);
+      if (importMatches) {
+        for (const importMatch of importMatches) {
+          const importPath = importMatch.match(/['"]([^'"]+)['"]/)?.[1];
+          if (importPath) {
+            const relationship: KnowledgeRelationship = {
+              from: fileEntity.name,
+              to: `import_${importPath.replace(/[\/\\]/g, '_')}`,
+              relationType: 'imports',
+              createdAt: now,
+              version: 1,
+              metadata: {
+                importPath: importPath
+              }
+            };
+            relationships.push(relationship);
+          }
+        }
+      }
+      
+      // Create function/class entities from source code
+      const functionMatches = content.match(/(?:function|const|let|var)\s+(\w+)\s*[=\(]/g);
+      if (functionMatches) {
+        for (const funcMatch of functionMatches) {
+          const funcName = funcMatch.match(/(?:function|const|let|var)\s+(\w+)/)?.[1];
+          if (funcName) {
+            const funcEntity: KnowledgeNode = {
+              name: `func_${fileName}_${funcName}`,
+              entityType: 'function',
+              observations: [
+                `Function name: ${funcName}`,
+                `Defined in file: ${relativePath}`,
+                `File: ${fileName}`
+              ],
+              createdAt: now,
+              version: 1,
+              metadata: {
+                functionName: funcName,
+                filePath: relativePath,
+                fileName: fileName
+              }
+            };
+            nodes.push(funcEntity);
+            
+            // Create relationship between file and function
+            const fileFuncRelationship: KnowledgeRelationship = {
+              from: fileEntity.name,
+              to: funcEntity.name,
+              relationType: 'contains',
+              createdAt: now,
+              version: 1,
+              metadata: {
+                relationship: 'file_contains_function'
+              }
+            };
+            relationships.push(fileFuncRelationship);
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.warn(chalk.yellow(`Warning: Could not read file ${filePath}: ${error}`));
+    }
+  }
+  
+  return { nodes, relationships };
+}
+
+/**
+ * Saves knowledge graph to .knowledge-node/.knowledge-node.json
+ * @param dirPath - Directory path to save knowledge graph
+ * @param knowledgeGraph - Knowledge graph data to save
+ */
+async function saveKnowledgeGraph(dirPath: string, knowledgeGraph: { nodes: KnowledgeNode[]; relationships: KnowledgeRelationship[] }): Promise<void> {
+  const knowledgeNodePath = join(dirPath, '.knowledge-node');
+  await mkdir(knowledgeNodePath, { recursive: true });
+  
+  const knowledgeNodeJson = {
+    version: '1.0.0',
+    nodes: knowledgeGraph.nodes,
+    relationships: knowledgeGraph.relationships,
+    created: new Date().toISOString(),
+    updated: new Date().toISOString()
+  };
+  
+  await writeFile(
+    join(knowledgeNodePath, '.knowledge-node.json'),
+    JSON.stringify(knowledgeNodeJson, null, 2)
+  );
+}
+
+/**
  * Traverses directories and creates .knowledge-node folders
  * @param rootDir - Root directory path to traverse
  * @throws {FileSystemError} When directory creation or file writing fails
@@ -390,50 +578,57 @@ async function traverseDirectories(rootDir: string) {
  * @throws {FileSystemError} When file reading fails
  */
 async function generateKnowledgeGraph(targetFolder: string) {
+  console.log(chalk.blue(`Starting knowledge graph generation for: ${targetFolder}`));
+  
   // Generate knowledge graph using DFS traversal
   const dfsTraverse = async (currentDir: string) => {
-    const items = await readdir(currentDir, { withFileTypes: true });
-    
-    for (const item of items) {
-      if (item.isDirectory() && !item.name.startsWith('.')) {
-        const itemPath = join(currentDir, item.name);
-        const knowledgeNodePath = join(
-          itemPath, 
-          '.knowledge-node', 
-          '.knowledge-node.json'
-        );
-        
-        try {
-          const nodeData = await readFile(knowledgeNodePath, 'utf-8');
-          const nodeJson = JSON.parse(nodeData);
+    try {
+      const items = await readdir(currentDir, { withFileTypes: true });
+      
+      for (const item of items) {
+        if (item.isDirectory() && !item.name.startsWith('.')) {
+          const itemPath = join(currentDir, item.name);
           
-          // Add nodes to knowledge graph
-          for (const node of nodeJson.nodes) {
-            knowledgeGraph.nodes.push(node);
-          }
-          for (const relationship of nodeJson.relationships) {
-            knowledgeGraph.relationships.push(relationship);
+          // Skip common build/cache directories
+          const skipDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'coverage', '.nyc_output', '.cache', '.parcel-cache', '.vscode', '.idea', 'vendor', 'target', 'out', 'bin', 'obj'];
+          if (skipDirs.includes(item.name)) {
+            continue;
           }
           
-          // Traverse subdirectories
+          console.log(chalk.gray(`Processing directory: ${itemPath}`));
+          
+          // Find source files in this directory
+          const sourceFiles = await findSourceFiles(itemPath);
+          
+          if (sourceFiles.length > 0) {
+            console.log(chalk.blue(`Found ${sourceFiles.length} source files in ${itemPath}`));
+            
+            // Create knowledge graph from source files
+            const localKnowledgeGraph = await createKnowledgeGraphFromFiles(sourceFiles, itemPath);
+            
+            // Save knowledge graph to .knowledge-node/.knowledge-node.json
+            await saveKnowledgeGraph(itemPath, localKnowledgeGraph);
+            
+            // Add to global knowledge graph
+            knowledgeGraph.nodes.push(...localKnowledgeGraph.nodes);
+            knowledgeGraph.relationships.push(...localKnowledgeGraph.relationships);
+            
+            console.log(chalk.green(`Generated knowledge graph for ${itemPath}`));
+          } else {
+            console.log(chalk.gray(`No source files found in ${itemPath}`));
+          }
+          
+          // Continue traversing subdirectories
           await dfsTraverse(itemPath);
-        } catch (error) {
-          if (error instanceof Error) {
-            throw new FileSystemError(
-              `Cannot read knowledge node file: ${error.message}`,
-              'knowledgeNodePath'
-            );
-          }
-          throw new FileSystemError(
-            'Unknown error occurred while reading knowledge node file',
-            'knowledgeNodePath'
-          );
         }
       }
+    } catch (error) {
+      console.warn(chalk.yellow(`Warning: Could not process directory ${currentDir}: ${error}`));
     }
   };
   
   await dfsTraverse(targetFolder);
+  console.log(chalk.green(`Knowledge graph generation completed. Total nodes: ${knowledgeGraph.nodes.length}, Total relationships: ${knowledgeGraph.relationships.length}`));
 }
 
 /**
