@@ -1,11 +1,12 @@
 // Jest setup file
 import { existsSync, rmSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
-// 테스트용 임시 디렉토리 경로
-export const TEST_DIR = join(__dirname, 'fixtures', 'test-project');
+// Test temporary directory path - use system temp directory
+export const TEST_DIR = join(tmpdir(), 'knowledge-graph-test-' + Date.now());
 
-// 테스트 전후 정리 함수들
+// Test setup and cleanup functions
 export const setupTestDir = () => {
   if (existsSync(TEST_DIR)) {
     rmSync(TEST_DIR, { recursive: true, force: true });
@@ -19,7 +20,7 @@ export const cleanupTestDir = () => {
   }
 };
 
-// CLI 명령 실행 헬퍼
+// CLI command execution helper
 export const runCLICommand = (command: string, ...args: string[]): Promise<{ success: boolean; output: string; error?: string }> => {
   return new Promise((resolve) => {
     const { spawn } = require('child_process');

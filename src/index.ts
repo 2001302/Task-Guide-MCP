@@ -136,7 +136,12 @@ const tools = [
     description: 'Clear all knowledge graphs',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        rootDirectory: {
+          type: 'string',
+          description: 'Root directory path to clear knowledge graphs from',
+        },
+      },
     },
   },
 ];
@@ -296,6 +301,8 @@ created: ${new Date().toISOString()}
       }
 
       case 'clear': {
+        const { rootDirectory } = args as { rootDirectory?: string };
+        
         console.log(chalk.yellow('Clearing all knowledge graphs...'));
         
         // Clear memory
@@ -305,7 +312,8 @@ created: ${new Date().toISOString()}
         };
         
         // Clear file system knowledge files
-        await clearKnowledgeFiles();
+        const targetDir = rootDirectory || process.cwd();
+        await clearKnowledgeFiles(targetDir);
         
         console.log(chalk.green('Knowledge graph cleanup completed successfully.'));
         
@@ -313,7 +321,7 @@ created: ${new Date().toISOString()}
           content: [
             {
               type: 'text',
-              text: 'All knowledge graphs have been cleared successfully.',
+              text: `All knowledge graphs have been cleared successfully from ${targetDir}.`,
             },
           ],
         };
@@ -590,7 +598,12 @@ const argv = yargs(process.argv.slice(2))
         type: 'string',
       });
   })
-  .command('clear', 'Clear all knowledge graphs')
+  .command('clear [rootDirectory]', 'Clear all knowledge graphs', (yargs) => {
+    return yargs.positional('rootDirectory', {
+      describe: 'Root directory to clear knowledge graphs from',
+      type: 'string',
+    });
+  })
   .help()
   .alias('help', 'h')
   .version('1.0.0')
@@ -702,6 +715,8 @@ created: ${new Date().toISOString()}
         break;
       }
       case 'clear': {
+        const rootDirectory = argv['rootDirectory'] as string;
+        
         console.log(chalk.yellow('Clearing all knowledge graphs...'));
         
         // Clear memory
@@ -711,7 +726,8 @@ created: ${new Date().toISOString()}
         };
         
         // Clear file system knowledge files
-        await clearKnowledgeFiles();
+        const targetDir = rootDirectory || process.cwd();
+        await clearKnowledgeFiles(targetDir);
         
         console.log(
           chalk.green('Knowledge graph cleanup completed successfully.')
