@@ -1,0 +1,29 @@
+{
+  "name": "knowledge-graph-driven-project-management-mcp",
+  "version": "1.0.0",
+  "description": "Knowledge Graph Driven Project Management MCP Server",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "mcp",
+    "knowledge-graph",
+    "project-management",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0"
+  }
+}
