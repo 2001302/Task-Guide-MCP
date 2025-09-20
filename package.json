@@ -12,20 +12,10 @@
     "dev": "ts-node src/index.ts",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration",
     "test:setup": "node dist/index.js setup ./test-project",
     "test:generate": "node dist/index.js generate ./test-project",
     "test:clear": "node dist/index.js clear ./test-project",
-    "test:create": "node scripts/create-demo-project.js",
-    "test:cleanup": "node scripts/create-demo-project.js cleanup",
-    "test:setup-project": "npm run test:create && node dist/index.js setup ./test-project",
-    "test:generate-project": "node dist/index.js generate ./test-project",
-    "test:clear-project": "node dist/index.js clear ./test-project",
-    "test:full": "npm run test:setup-project && npm run test:generate-project && echo 'Test completed. Check ./test-project for knowledge graph files.'"
+    "test:create": "node scripts/create-test-project.js"
   },
   "keywords": [
     "mcp",
@@ -39,8 +29,6 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "@types/yargs": "^17.0.33",
-    "jest": "^30.1.3",
-    "ts-jest": "^29.4.4",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   },
