@@ -57,7 +57,7 @@
 	- 무슨 일을 할 것인지 물어봄
 	- 자신의 일과 관련있는 node만을 수집
 - clear
-	- 모든 knowledge 정리
+	- 모든 directory를 순회하며 모든 knowledge 정리
 
 ### unit test
 #### publish

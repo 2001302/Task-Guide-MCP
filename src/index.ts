@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-// Node.js 내장 모듈
-import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
+// Node.js built-in modules
+import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
 import { join } from 'path';
 
-// 외부 라이브러리
+// External libraries
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -14,7 +14,7 @@ import {
 import yargs from 'yargs';
 import chalk from 'chalk';
 
-// 커스텀 에러 클래스
+// Custom error classes
 class KnowledgeGraphError extends Error {
   constructor(
     message: string,
@@ -298,10 +298,14 @@ created: ${new Date().toISOString()}
       case 'clear': {
         console.log(chalk.yellow('Clearing all knowledge graphs...'));
         
+        // Clear memory
         knowledgeGraph = {
           nodes: [],
           relationships: [],
         };
+        
+        // Clear file system knowledge files
+        await clearKnowledgeFiles();
         
         console.log(chalk.green('Knowledge graph cleanup completed successfully.'));
         
@@ -333,9 +337,9 @@ created: ${new Date().toISOString()}
 });
 
 /**
- * 디렉토리를 순회하며 .knowledge-node 폴더를 생성합니다
- * @param rootDir - 순회할 루트 디렉토리 경로
- * @throws {FileSystemError} 디렉토리 생성 또는 파일 쓰기 실패 시
+ * Traverses directories and creates .knowledge-node folders
+ * @param rootDir - Root directory path to traverse
+ * @throws {FileSystemError} When directory creation or file writing fails
  */
 async function traverseDirectories(rootDir: string) {
   
@@ -373,9 +377,9 @@ async function traverseDirectories(rootDir: string) {
 }
 
 /**
- * 타겟 폴더에서 지식 그래프를 생성합니다
- * @param targetFolder - 지식 그래프를 생성할 타겟 폴더 경로
- * @throws {FileSystemError} 파일 읽기 실패 시
+ * Generates knowledge graph from target folder
+ * @param targetFolder - Target folder path to generate knowledge graph from
+ * @throws {FileSystemError} When file reading fails
  */
 async function generateKnowledgeGraph(targetFolder: string) {
   // Generate knowledge graph using DFS traversal
@@ -425,8 +429,8 @@ async function generateKnowledgeGraph(targetFolder: string) {
 }
 
 /**
- * Git diff를 기반으로 지식 그래프를 업데이트합니다
- * @param gitDiff - Git diff 정보
+ * Updates knowledge graph based on Git diff
+ * @param gitDiff - Git diff information
  */
 async function updateKnowledgeGraph(gitDiff: string) {
   // Parse Git diff to extract changed files
@@ -447,10 +451,10 @@ async function updateKnowledgeGraph(gitDiff: string) {
 }
 
 /**
- * 개인 지식 그래프를 생성합니다
- * @param rootDirectory - 프로젝트 루트 디렉토리 경로
- * @param purpose - 지식 그래프 생성 목적
- * @throws {FileSystemError} 디렉토리 생성 또는 파일 쓰기 실패 시
+ * Generates private knowledge graph
+ * @param rootDirectory - Project root directory path
+ * @param purpose - Purpose of knowledge graph generation
+ * @throws {FileSystemError} When directory creation or file writing fails
  */
 async function generatePrivateKnowledge(rootDirectory: string, purpose: string) {
   const myKnowledgePath = join(rootDirectory, '.my-knowledge');
@@ -468,6 +472,91 @@ async function generatePrivateKnowledge(rootDirectory: string, purpose: string) 
     join(myKnowledgePath, 'private-knowledge.json'),
     JSON.stringify(privateKnowledgeData, null, 2)
   );
+}
+
+/**
+ * Clears all knowledge files from the file system
+ * @param rootDir - Root directory path to clear knowledge files from
+ * @throws {FileSystemError} When file deletion fails
+ */
+async function clearKnowledgeFiles(rootDir?: string) {
+  // Directories to skip during traversal
+  const skipDirs = new Set([
+    'node_modules',
+    '.git',
+    'dist',
+    'build',
+    '.next',
+    '.nuxt',
+    'coverage',
+    '.nyc_output',
+    '.cache',
+    '.parcel-cache',
+    '.vscode',
+    '.idea',
+    'vendor',
+    'target',
+    'out',
+    'bin',
+    'obj'
+  ]);
+
+  const clearDir = async (currentDir: string) => {
+    try {
+      const items = await readdir(currentDir, { withFileTypes: true });
+      
+      for (const item of items) {
+        if (item.isDirectory()) {
+          const itemPath = join(currentDir, item.name);
+          
+          // Skip certain directories (but allow .knowledge-* and .my-knowledge)
+          if (skipDirs.has(item.name) || 
+              (item.name.startsWith('.') && 
+               !item.name.startsWith('.knowledge-') && 
+               item.name !== '.my-knowledge')) {
+            continue;
+          }
+          
+          // Remove .knowledge-root folder
+          if (item.name === '.knowledge-root') {
+            await rm(itemPath, { recursive: true, force: true });
+            console.log(chalk.gray(`Removed: ${itemPath}`));
+            continue; // Skip traversing into deleted directory
+          }
+          
+          // Remove .knowledge-node folder
+          if (item.name === '.knowledge-node') {
+            await rm(itemPath, { recursive: true, force: true });
+            console.log(chalk.gray(`Removed: ${itemPath}`));
+            continue; // Skip traversing into deleted directory
+          }
+          
+          // Remove .my-knowledge folder
+          if (item.name === '.my-knowledge') {
+            await rm(itemPath, { recursive: true, force: true });
+            console.log(chalk.gray(`Removed: ${itemPath}`));
+            continue; // Skip traversing into deleted directory
+          }
+          
+          // Traverse subdirectories
+          await clearDir(itemPath);
+        }
+      }
+    } catch (error) {
+      // Ignore ENOENT errors (directory doesn't exist)
+      if (error instanceof Error && error.message.includes('ENOENT')) {
+        return;
+      }
+      throw error;
+    }
+  };
+  
+  if (rootDir) {
+    await clearDir(rootDir);
+  } else {
+    // If no root directory specified, clear from current working directory
+    await clearDir(process.cwd());
+  }
 }
 
 // CLI interface setup
@@ -510,7 +599,7 @@ const argv = yargs(process.argv.slice(2))
   .parseSync();
 
 /**
- * MCP 서버를 시작합니다
+ * Starts MCP server
  */
 async function startServer() {
   const transport = new StdioServerTransport();
@@ -521,7 +610,7 @@ async function startServer() {
 }
 
 /**
- * CLI 명령어를 실행합니다
+ * Executes CLI commands
  */
 async function runCLI() {
   const command = argv._[0] as string;
@@ -614,10 +703,16 @@ created: ${new Date().toISOString()}
       }
       case 'clear': {
         console.log(chalk.yellow('Clearing all knowledge graphs...'));
+        
+        // Clear memory
         knowledgeGraph = {
           nodes: [],
           relationships: [],
         };
+        
+        // Clear file system knowledge files
+        await clearKnowledgeFiles();
+        
         console.log(
           chalk.green('Knowledge graph cleanup completed successfully.')
         );
@@ -638,12 +733,13 @@ created: ${new Date().toISOString()}
 }
 
 /**
- * 메인 실행 로직을 처리합니다
- * TTY가 있으면 CLI 모드로, 없으면 MCP 서버 모드로 실행됩니다
+ * Handles main execution logic
+ * Runs in CLI mode if TTY is available, otherwise runs in MCP server mode
  */
 async function main() {
   // Check if running as MCP server (when executed via stdio)
-  if (process.stdin.isTTY) {
+  // Also check for command line arguments to force CLI mode
+  if (process.stdin.isTTY || process.argv.length > 2) {
     // Run in CLI mode
     await runCLI();
   } else {

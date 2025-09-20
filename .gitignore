@@ -95,3 +95,6 @@ public
 # Temporary folders
 tmp/
 temp/
+
+# Test sample
+test sample/
