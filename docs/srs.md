@@ -3,8 +3,7 @@
 ## System Architecture
 ---
 ### Project Dependencies
-- knowledge-graph-driven-project-management-plugin
-	- knowledge-graph-driven-project-management-mcp
+- knowledge-graph-driven-project-management-mcp
 
 ## Software Design
 ---

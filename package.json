@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Knowledge Graph Driven Project Management MCP Server",
   "main": "dist/index.js",
+  "bin": {
+    "knowledge-graph-mcp": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
@@ -20,10 +23,15 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.0"
+    "@types/yargs": "^17.0.33",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.4.0"
+    "@itseasy21/mcp-knowledge-graph": "^1.0.7",
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "chalk": "^5.6.2",
+    "yargs": "^18.0.0",
+    "zod": "^4.1.9"
   }
 }
