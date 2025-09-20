@@ -4,7 +4,6 @@ import { join } from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
-import yargs from 'yargs';
 import chalk from 'chalk';
 
 // Custom error classes
@@ -739,50 +738,6 @@ async function clearKnowledgeFiles(rootDir?: string) {
   }
 }
 
-// CLI interface setup
-const argv = yargs(process.argv.slice(2))
-  .command('setup <rootDirectory>', 'Initialize knowledge graph project', (yargs) => {
-    return yargs.positional('rootDirectory', {
-      describe: 'Project root directory',
-      type: 'string',
-    });
-  })
-  .command('generate <targetFolder>', 'Generate knowledge graph', (yargs) => {
-    return yargs.positional('targetFolder', {
-      describe: 'Target folder to generate knowledge graph',
-      type: 'string',
-    });
-  })
-  .command('update <gitDiff>', 'Update knowledge graph', (yargs) => {
-    return yargs.positional('gitDiff', {
-      describe: 'Git diff information',
-      type: 'string',
-    });
-  })
-  .command('private-knowledge <rootDirectory> <purpose>', 'Generate private knowledge graph', (yargs) => {
-    return yargs
-      .positional('rootDirectory', {
-        describe: 'Project root directory',
-        type: 'string',
-      })
-      .positional('purpose', {
-        describe: 'Description of what to do',
-        type: 'string',
-      });
-  })
-  .command('clear [rootDirectory]', 'Clear all knowledge graphs', (yargs) => {
-    return yargs.positional('rootDirectory', {
-      describe: 'Root directory to clear knowledge graphs from',
-      type: 'string',
-    });
-  })
-  .help()
-  .alias('help', 'h')
-  .version('1.0.0')
-  .alias('version', 'v')
-  .demandCommand(1, 'Please enter a command.')
-  .parseSync();
-
 /**
  * Starts MCP server
  */
@@ -795,141 +750,11 @@ async function startServer() {
 }
 
 /**
- * Executes CLI commands
- */
-async function runCLI() {
-  const command = argv._[0] as string;
-
-  try {
-    switch (command) {
-      case 'setup': {
-        const rootDirectory = argv['rootDirectory'] as string;
-        console.log(chalk.blue('Starting knowledge graph project initialization...'));
-
-        // Create .knowledge-root folder
-
-        const knowledgeRootPath = join(rootDirectory, '.knowledge-root');
-        await mkdir(knowledgeRootPath, { recursive: true });
-
-        // Create basic configuration files
-        const configYaml = `# Knowledge Graph Configuration version: 1.0.0}`;
-
-        const knowledgeNodeJson = {
-          version: '1.0.0',
-          nodes: [],
-          relationships: [],
-        };
-
-        const knowledgeIgnoreJson = {
-          patterns: [
-            'node_modules/**',
-            '.git/**',
-            'dist/**',
-            'build/**',
-            '*.log',
-            '.DS_Store',
-          ],
-        };
-
-        await writeFile(
-          join(knowledgeRootPath, '.config.yaml'),
-          configYaml
-        );
-        await writeFile(
-          join(knowledgeRootPath, '.knowledge-node.json'),
-          JSON.stringify(knowledgeNodeJson, null, 2)
-        );
-        await writeFile(
-          join(knowledgeRootPath, '.knowledge-ignore.json'),
-          JSON.stringify(knowledgeIgnoreJson, null, 2)
-        );
-
-        // Traverse all directories and create .knowledge-node folders
-        await traverseDirectories(rootDirectory);
-
-        console.log(
-          chalk.green('Knowledge graph project initialization completed successfully.')
-        );
-        break;
-      }
-      case 'generate': {
-        const targetFolder = argv['targetFolder'] as string;
-        console.log(
-          chalk.blue(`Generating knowledge graph: ${targetFolder}`)
-        );
-        await generateKnowledgeGraph(targetFolder);
-        console.log(
-          chalk.green('Knowledge graph generation completed successfully.')
-        );
-        break;
-      }
-      case 'update': {
-        const gitDiff = argv['gitDiff'] as string;
-        console.log(chalk.blue('Updating knowledge graph...'));
-        await updateKnowledgeGraph(gitDiff);
-        console.log(
-          chalk.green('Knowledge graph update completed successfully.')
-        );
-        break;
-      }
-      case 'private-knowledge': {
-        const rootDirectory = argv['rootDirectory'] as string;
-        const purpose = argv['purpose'] as string;
-        console.log(chalk.blue('Generating private knowledge graph...'));
-        await generatePrivateKnowledge(rootDirectory, purpose);
-        console.log(
-          chalk.green('Private knowledge graph generation completed successfully.')
-        );
-        break;
-      }
-      case 'clear': {
-        const rootDirectory = argv['rootDirectory'] as string;
-
-        console.log(chalk.yellow('Clearing all knowledge graphs...'));
-
-        // Clear memory
-        knowledgeGraph = {
-          nodes: [],
-          relationships: [],
-        };
-
-        // Clear file system knowledge files
-        const targetDir = rootDirectory || process.cwd();
-        await clearKnowledgeFiles(targetDir);
-
-        console.log(
-          chalk.green('Knowledge graph cleanup completed successfully.')
-        );
-        break;
-      }
-      default:
-        console.error(chalk.red(`Unknown command: ${command}`));
-        process.exit(1);
-    }
-  } catch (error) {
-    if (error instanceof KnowledgeGraphError) {
-      console.error(chalk.red(`Error occurred: ${error.message}`));
-    } else {
-      console.error(chalk.red(`Unexpected error occurred: ${error}`));
-    }
-    process.exit(1);
-  }
-}
-
-/**
  * Handles main execution logic
- * Runs in CLI mode if TTY is available, otherwise runs in MCP server mode
+ * Always runs in MCP server mode
  */
 async function main() {
-  // Check if running as MCP server (when executed via stdio)
-  // Also check for command line arguments to force CLI mode
-  if (process.stdin.isTTY || process.argv.length > 2) {
-    // Run in CLI mode
-    await runCLI();
-  } else {
-    // Run in MCP server mode
-    await startServer();
-  }
+  await startServer();
 }
 
 // Error handling

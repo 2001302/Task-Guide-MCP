@@ -19,23 +19,49 @@ npm run build
 
 ## Usage
 
-### CLI Commands
+### CLI Commands (터미널에서 직접 실행)
 
 ```bash
 # Setup knowledge graph project
-node dist/index.js setup <rootDirectory>
+npm run setup
 
 # Generate knowledge graph from source files
-node dist/index.js generate <targetFolder>
-
-# Update knowledge graph based on Git diff
-node dist/index.js update <gitDiff>
+npm run generate
 
 # Clear all knowledge graphs
-node dist/index.js clear [rootDirectory]
+npm run clear
 
-# Generate private knowledge graph
-node dist/index.js private-knowledge <rootDirectory> <purpose>
+# Create test project
+npm run create
+
+# CLI 도움말 보기
+npm run cli -- --help
+```
+
+### 직접 CLI 실행
+
+```bash
+# Setup knowledge graph project
+node scripts/simple-cli.js setup
+
+# Generate knowledge graph from source files
+node scripts/simple-cli.js generate ./src
+
+# Clear all knowledge graphs
+node scripts/simple-cli.js clear
+
+# 도움말 보기
+node scripts/simple-cli.js help
+```
+
+### MCP 서버 모드 (기존 방식)
+
+```bash
+# MCP 서버로 실행
+npm run server
+
+# 개발 모드로 실행
+npm run dev:server
 ```
 
 ### NPM Scripts
