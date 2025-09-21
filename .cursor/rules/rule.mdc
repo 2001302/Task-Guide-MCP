@@ -1,25 +1,15 @@
 ---
-description: 새로운 채팅이 시작할 때마다 이 규칙을 읽고 시작하도록 설정
+description: Read this rule at the start of every new chat
 globs:
 alwaysApply: false
 ---
 
-# 새로운 채팅 시작 규칙
+# New Chat Start Rule
 
-새로운 채팅이 시작될 때마다 이 규칙 파일을 먼저 읽고 다음 사항들을 확인하세요:
+Read this rule file first at the start of every new chat and check the following:
 
-1. 프로젝트의 현재 상태 파악
-2. 사용자의 요청에 대한 적절한 응답 준비
-
-## 코딩 컨벤션 준수
-
-모든 코드 작성 시 다음 규칙을 준수해야 합니다:
-
-**코드 일관성**: 기존 코드 스타일과 일치하도록 작성합니다
-**타입 안전성**: 모든 변수, 함수, 클래스에 적절한 타입을 지정합니다
-**에러 처리**: 적절한 에러 처리와 예외 상황을 고려합니다
-**영어 사용**: `src/` 디렉토리의 모든 주석과 문자열은 영어로 작성합니다
-**이모티콘 금지**: `src/` 디렉토리에서는 이모티콘을 사용하지 않습니다
-**한국어 사용**: `docs/` 디렉토리의 모든 문서는 한국어로 작성합니다
-**영어 사용**: `tests/` 디렉토리의 모든 주석과 문자열은 영어로 작성합니다
-**테스트**: `test-project/` 디렉토리는 test set이므로 무시합니다.
+- Always respond in Korean
+- Write code that matches the existing code style
+- All comments and strings in the `src/` directory should be written in English
+- Do not use emojis
+- All documents in the `docs/` directory should be written in Korean

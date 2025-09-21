@@ -1,147 +1,72 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises';
-import { join } from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
 import chalk from 'chalk';
+import { KnowledgeTree, KnowledgeTreeNodeData } from './knowledge-tree/knowledge-tree.js';
 
-// Custom error classes
-class KnowledgeGraphError extends Error {
-  constructor(
-    message: string,
-    public readonly code: string,
-    public readonly field?: string
-  ) {
-    super(message);
-    this.name = 'KnowledgeGraphError';
-  }
-}
-
-class ValidationError extends KnowledgeGraphError {
-  constructor(message: string, field?: string) {
-    super(message, 'VALIDATION_ERROR', field);
-    this.name = 'ValidationError';
-  }
-}
-
-class FileSystemError extends KnowledgeGraphError {
-  constructor(message: string, field?: string) {
-    super(message, 'FILE_SYSTEM_ERROR', field);
-    this.name = 'FileSystemError';
-  }
-}
-
-// Create MCP server instance
 const server = new Server({
   name: 'knowledge-graph-driven-project-management-mcp',
   version: '1.0.0',
 });
 
-// Knowledge graph data storage (inspired by @itseasy21/mcp-knowledge-graph)
-interface KnowledgeNode {
-  name: string;           // 고유 이름 (id 대신)
-  entityType: string;     // 엔티티 타입 (type 대신)
-  observations: string[]; // 관찰 데이터 배열 (content 대신)
-  version: number;        // 버전
-  metadata?: Record<string, any>;
+enum ErrorCode {
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  FILE_SYSTEM_ERROR = 'FILE_SYSTEM_ERROR',
+  KNOWLEDGE_GRAPH_ERROR = 'KNOWLEDGE_GRAPH_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
 
-interface KnowledgeRelationship {
-  from: string;           // 출발 엔티티 이름
-  to: string;             // 도착 엔티티 이름
-  relationType: string;   // 관계 타입 (type 대신)
-  version: number;        // 버전
-  metadata?: Record<string, any>;
-}
-
-let knowledgeGraph: {
-  nodes: KnowledgeNode[];
-  relationships: KnowledgeRelationship[];
-} = {
-  nodes: [],
-  relationships: [],
-};
-
-// Supported source code file extensions
-const SOURCE_FILE_EXTENSIONS = [
-  '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cpp', '.c', '.h', '.hpp',
-  '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.m', '.mm',
-  '.vue', '.svelte', '.dart', '.r', '.jl', '.sh', '.bash', '.zsh', '.fish',
-  '.sql', '.html', '.css', '.scss', '.sass', '.less', '.xml', '.json', '.yaml', '.yml'
-];
+// Knowledge Tree instance
+let knowledgeTree: KnowledgeTree = new KnowledgeTree();
 
 // Define tool list
 const tools = [
   {
-    name: 'setup',
-    description: 'Initialize knowledge graph project',
+    name: 'get-context',
+    description: 'Get AI context for a specific node',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeName: {
+          type: 'string',
+          description: 'Name of the node to get context for',
+        },
+        includeSiblings: {
+          type: 'boolean',
+          description: 'Whether to include sibling nodes in context',
+        },
+        maxDepth: {
+          type: 'number',
+          description: 'Maximum depth of child nodes to include',
+        },
+      },
+      required: ['nodeName'],
+    },
+  },
+  {
+    name: 'build-tree',
+    description: 'Build knowledge tree from existing knowledge graph',
     inputSchema: {
       type: 'object',
       properties: {
         rootDirectory: {
           type: 'string',
-          description: 'Project root directory path',
+          description: 'Root directory to build tree from',
         },
       },
       required: ['rootDirectory'],
     },
   },
   {
-    name: 'generate',
-    description: 'Generate knowledge graph',
+    name: 'get-tree-info',
+    description: 'Get information about the knowledge tree structure',
     inputSchema: {
       type: 'object',
       properties: {
-        targetFolder: {
+        nodeName: {
           type: 'string',
-          description: 'Target folder to generate knowledge graph',
-        },
-      },
-      required: ['targetFolder'],
-    },
-  },
-  {
-    name: 'update',
-    description: 'Update knowledge graph',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        gitDiff: {
-          type: 'string',
-          description: 'Git diff information',
-        },
-      },
-      required: ['gitDiff'],
-    },
-  },
-  {
-    name: 'private-knowledge',
-    description: 'Generate private knowledge graph',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        rootDirectory: {
-          type: 'string',
-          description: 'Project root directory path',
-        },
-        purpose: {
-          type: 'string',
-          description: 'Description of what to do',
-        },
-      },
-      required: ['rootDirectory', 'purpose'],
-    },
-  },
-  {
-    name: 'clear',
-    description: 'Clear all knowledge graphs',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        rootDirectory: {
-          type: 'string',
-          description: 'Root directory path to clear knowledge graphs from',
+          description: 'Optional specific node to get info for',
         },
       },
     },
@@ -161,168 +86,130 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
-      case 'setup': {
+      case 'get-context': {
+        const { nodeName, includeSiblings = true } = args as {
+          nodeName: string;
+          includeSiblings?: boolean;
+          maxDepth?: number;
+        };
+
+        if (!nodeName || typeof nodeName !== 'string') {
+          const error = new Error('Node name is required and must be a string');
+          (error as any).code = ErrorCode.VALIDATION_ERROR;
+          (error as any).field = 'nodeName';
+          throw error;
+        }
+
+        console.log(chalk.blue(`Getting AI context for node: ${nodeName}`));
+
+        const context = knowledgeTree.getContextualAIContext(nodeName, includeSiblings);
+        
+        if (context.includes('not found')) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Node '${nodeName}' not found in knowledge tree.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        console.log(chalk.green('AI context generated successfully.'));
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: context,
+            },
+          ],
+        };
+      }
+
+      case 'build-tree': {
         const { rootDirectory } = args as { rootDirectory: string };
 
         if (!rootDirectory || typeof rootDirectory !== 'string') {
-          throw new ValidationError('Root directory is required and must be a string', 'rootDirectory');
+          const error = new Error('Root directory is required and must be a string');
+          (error as any).code = ErrorCode.VALIDATION_ERROR;
+          (error as any).field = 'rootDirectory';
+          throw error;
         }
 
-        console.log(chalk.blue('Starting knowledge graph project initialization...'));
+        console.log(chalk.blue('Building knowledge tree...'));
 
-        // Create .knowledge-root folder
+        // Build tree from existing knowledge graph
+        await buildKnowledgeTree(rootDirectory);
 
-        const knowledgeRootPath = join(rootDirectory, '.knowledge-root');
-        await mkdir(knowledgeRootPath, { recursive: true });
-
-        // Create basic configuration files
-        const configYaml = `# Knowledge Graph Configuration version: 1.0.0}`;
-
-        const knowledgeNodeJson = {
-          version: '1.0.0',
-          nodes: [],
-          relationships: [],
-        };
-
-        const knowledgeIgnoreJson = {
-          patterns: [
-            'node_modules/**',
-            '.git/**',
-            'dist/**',
-            'build/**',
-            '*.log',
-            '.DS_Store',
-          ],
-        };
-
-        await writeFile(
-          join(knowledgeRootPath, '.config.yaml'),
-          configYaml
-        );
-        await writeFile(
-          join(knowledgeRootPath, '.knowledge-node.json'),
-          JSON.stringify(knowledgeNodeJson, null, 2)
-        );
-        await writeFile(
-          join(knowledgeRootPath, '.knowledge-ignore.json'),
-          JSON.stringify(knowledgeIgnoreJson, null, 2)
-        );
-
-        // Traverse all directories and create .knowledge-node folders
-        await traverseDirectories(rootDirectory);
-
-        console.log(chalk.green('Knowledge graph project initialization completed successfully.'));
+        console.log(chalk.green('Knowledge tree built successfully.'));
 
         return {
           content: [
             {
               type: 'text',
-              text: `Knowledge graph project has been set up successfully.\nRoot directory: ${rootDirectory}\nConfiguration file location: ${knowledgeRootPath}`,
+              text: `Knowledge tree has been built successfully.\nTree size: ${knowledgeTree.getSize()} nodes\nMax depth: ${knowledgeTree.getMaxDepth()}`,
             },
           ],
         };
       }
 
-      case 'generate': {
-        const { targetFolder } = args as { targetFolder: string };
+      case 'get-tree-info': {
+        const { nodeName } = args as { nodeName?: string };
 
-        if (!targetFolder || typeof targetFolder !== 'string') {
-          throw new ValidationError('Target folder is required and must be a string', 'targetFolder');
+        console.log(chalk.blue('Getting knowledge tree information...'));
+
+        if (nodeName) {
+          const node = knowledgeTree.findNode(nodeName);
+          if (!node) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Node '${nodeName}' not found in knowledge tree.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const info = {
+            name: node.data.name,
+            type: node.data.entityType,
+            path: node.data.path,
+            depth: node.getDepth(),
+            isRoot: node.isRoot(),
+            isLeaf: node.isLeaf(),
+            childrenCount: node.children.length,
+            fullPath: node.getFullPath(),
+          };
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**Node Information:**\n${JSON.stringify(info, null, 2)}`,
+              },
+            ],
+          };
+        } else {
+          const info = {
+            totalNodes: knowledgeTree.getSize(),
+            maxDepth: knowledgeTree.getMaxDepth(),
+            hasRoot: knowledgeTree.root !== null,
+            rootName: knowledgeTree.root?.data.name || 'None',
+          };
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**Tree Information:**\n${JSON.stringify(info, null, 2)}\n\n**Tree Structure:**\n${knowledgeTree.toString()}`,
+              },
+            ],
+          };
         }
-
-        console.log(chalk.blue(`Generating knowledge graph: ${targetFolder}`));
-
-        // Generate knowledge graph using DFS traversal
-        await generateKnowledgeGraph(targetFolder);
-
-        console.log(chalk.green('Knowledge graph generation completed successfully.'));
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Knowledge graph has been generated successfully.\nTarget folder: ${targetFolder}`,
-            },
-          ],
-        };
-      }
-
-      case 'update': {
-        const { gitDiff } = args as { gitDiff: string };
-
-        console.log(chalk.blue('Updating knowledge graph...'));
-
-        // Update knowledge graph based on Git diff
-        await updateKnowledgeGraph(gitDiff);
-
-        console.log(chalk.green('Knowledge graph update completed successfully.'));
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Knowledge graph has been updated successfully.',
-            },
-          ],
-        };
-      }
-
-      case 'private-knowledge': {
-        const { rootDirectory, purpose } = args as {
-          rootDirectory: string;
-          purpose: string;
-        };
-
-        if (!rootDirectory || typeof rootDirectory !== 'string') {
-          throw new ValidationError('Root directory is required and must be a string', 'rootDirectory');
-        }
-
-        if (!purpose || typeof purpose !== 'string') {
-          throw new ValidationError('Purpose is required and must be a string', 'purpose');
-        }
-
-        console.log(chalk.blue('Generating private knowledge graph...'));
-
-        // Generate private knowledge graph
-        await generatePrivateKnowledge(rootDirectory, purpose);
-
-        console.log(chalk.green('Private knowledge graph generation completed successfully.'));
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Private knowledge graph has been generated successfully.\nPurpose: ${purpose}\nLocation: ${rootDirectory}/.my-knowledge`,
-            },
-          ],
-        };
-      }
-
-      case 'clear': {
-        const { rootDirectory } = args as { rootDirectory?: string };
-
-        console.log(chalk.yellow('Clearing all knowledge graphs...'));
-
-        // Clear memory
-        knowledgeGraph = {
-          nodes: [],
-          relationships: [],
-        };
-
-        // Clear file system knowledge files
-        const targetDir = rootDirectory || process.cwd();
-        await clearKnowledgeFiles(targetDir);
-
-        console.log(chalk.green('Knowledge graph cleanup completed successfully.'));
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `All knowledge graphs have been cleared successfully from ${targetDir}.`,
-            },
-          ],
-        };
       }
 
       default:
@@ -343,404 +230,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 /**
- * Finds source code files in a directory
- * @param dirPath - Directory path to search
- * @returns Array of source code file paths
+ * Build knowledge tree from existing knowledge graph data
  */
-async function findSourceFiles(dirPath: string): Promise<string[]> {
-  const sourceFiles: string[] = [];
+async function buildKnowledgeTree(rootDirectory: string): Promise<void> {
+  console.log(chalk.blue('Building knowledge tree from existing knowledge graph...'));
 
-  const findFiles = async (currentDir: string) => {
-    try {
-      const items = await readdir(currentDir, { withFileTypes: true });
+  // Clear existing tree
+  knowledgeTree = new KnowledgeTree();
 
-      for (const item of items) {
-        if (item.isDirectory() && !item.name.startsWith('.')) {
-          // Skip common build/cache directories
-          const skipDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'coverage', '.nyc_output', '.cache', '.parcel-cache', '.vscode', '.idea', 'vendor', 'target', 'out', 'bin', 'obj'];
-          if (!skipDirs.includes(item.name)) {
-            await findFiles(join(currentDir, item.name));
-          }
-        } else if (item.isFile()) {
-          const ext = item.name.substring(item.name.lastIndexOf('.'));
-          if (SOURCE_FILE_EXTENSIONS.includes(ext)) {
-            sourceFiles.push(join(currentDir, item.name));
-          }
-        }
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new FileSystemError(
-          `Cannot read directory: ${error.message}`,
-          'currentDir'
-        );
-      }
-      throw new FileSystemError(
-        'Unknown error occurred while reading directory',
-        'currentDir'
-      );
+  // Create root node for the project
+  const rootData: KnowledgeTreeNodeData = {
+    name: 'project_root',
+    entityType: 'project',
+    observations: [`Project root directory: ${rootDirectory}`],
+    path: rootDirectory,
+    metadata: {
+      type: 'project_root'
     }
   };
 
-  await findFiles(dirPath);
-  return sourceFiles;
+  knowledgeTree.addNode(rootData);
+
+  console.log(chalk.green(`Knowledge tree built with ${knowledgeTree.getSize()} nodes`));
 }
 
-/**
- * Creates knowledge graph from source files (inspired by @itseasy21/mcp-knowledge-graph)
- * @param sourceFiles - Array of source file paths
- * @param dirPath - Directory path for context
- * @returns Knowledge graph data
- */
-async function createKnowledgeGraphFromFiles(sourceFiles: string[], dirPath: string): Promise<{ nodes: KnowledgeNode[]; relationships: KnowledgeRelationship[] }> {
-  const nodes: KnowledgeNode[] = [];
-  const relationships: KnowledgeRelationship[] = [];
-
-  for (const filePath of sourceFiles) {
-    try {
-      const content = await readFile(filePath, 'utf-8');
-      const relativePath = filePath.replace(dirPath, '').replace(/^[\/\\]/, '');
-      const fileName = relativePath.split(/[\/\\]/).pop() || relativePath;
-      const extension = filePath.substring(filePath.lastIndexOf('.'));
-
-      // Create file entity (inspired by @itseasy21/mcp-knowledge-graph structure)
-      const fileEntity: KnowledgeNode = {
-        name: `file_${relativePath.replace(/[\/\\]/g, '_')}`,
-        entityType: 'source_file',
-        observations: [
-          `File path: ${relativePath}`,
-          `File size: ${content.length} characters`,
-          `File extension: ${extension}`,
-          `Content preview: ${content.substring(0, 200)}...`
-        ],
-        version: 1,
-        metadata: {
-          path: relativePath,
-          fullPath: filePath,
-          size: content.length,
-          extension: extension
-        }
-      };
-      nodes.push(fileEntity);
-
-      // Create relationships based on imports/dependencies
-      const importMatches = content.match(/import\s+.*\s+from\s+['"]([^'"]+)['"]/g);
-      if (importMatches) {
-        for (const importMatch of importMatches) {
-          const importPath = importMatch.match(/['"]([^'"]+)['"]/)?.[1];
-          if (importPath) {
-            const relationship: KnowledgeRelationship = {
-              from: fileEntity.name,
-              to: `import_${importPath.replace(/[\/\\]/g, '_')}`,
-              relationType: 'imports',
-              version: 1,
-              metadata: {
-                importPath: importPath
-              }
-            };
-            relationships.push(relationship);
-          }
-        }
-      }
-
-      // Create function/class entities from source code
-      const functionMatches = content.match(/(?:function|const|let|var)\s+(\w+)\s*[=\(]/g);
-      if (functionMatches) {
-        for (const funcMatch of functionMatches) {
-          const funcName = funcMatch.match(/(?:function|const|let|var)\s+(\w+)/)?.[1];
-          if (funcName) {
-            const funcEntity: KnowledgeNode = {
-              name: `func_${fileName}_${funcName}`,
-              entityType: 'function',
-              observations: [
-                `Function name: ${funcName}`,
-                `Defined in file: ${relativePath}`,
-                `File: ${fileName}`
-              ],
-              version: 1,
-              metadata: {
-                functionName: funcName,
-                filePath: relativePath,
-                fileName: fileName
-              }
-            };
-            nodes.push(funcEntity);
-
-            // Create relationship between file and function
-            const fileFuncRelationship: KnowledgeRelationship = {
-              from: fileEntity.name,
-              to: funcEntity.name,
-              relationType: 'contains',
-              version: 1,
-              metadata: {
-                relationship: 'file_contains_function'
-              }
-            };
-            relationships.push(fileFuncRelationship);
-          }
-        }
-      }
-
-    } catch (error) {
-      console.warn(chalk.yellow(`Warning: Could not read file ${filePath}: ${error}`));
-    }
-  }
-
-  return { nodes, relationships };
-}
-
-/**
- * Saves knowledge graph to .knowledge-node/.knowledge-node.json
- * @param dirPath - Directory path to save knowledge graph
- * @param knowledgeGraph - Knowledge graph data to save
- */
-async function saveKnowledgeGraph(dirPath: string, knowledgeGraph: { nodes: KnowledgeNode[]; relationships: KnowledgeRelationship[] }): Promise<void> {
-  const knowledgeNodePath = join(dirPath, '.knowledge-node');
-  await mkdir(knowledgeNodePath, { recursive: true });
-
-  const knowledgeNodeJson = {
-    version: '1.0.0',
-    nodes: knowledgeGraph.nodes,
-    relationships: knowledgeGraph.relationships,
-  };
-
-  await writeFile(
-    join(knowledgeNodePath, '.knowledge-node.json'),
-    JSON.stringify(knowledgeNodeJson, null, 2)
-  );
-}
-
-/**
- * Traverses directories and creates .knowledge-node folders
- * @param rootDir - Root directory path to traverse
- * @throws {FileSystemError} When directory creation or file writing fails
- */
-async function traverseDirectories(rootDir: string) {
-
-  const traverseDir = async (currentDir: string) => {
-    const items = await readdir(currentDir, { withFileTypes: true });
-
-    for (const item of items) {
-      if (item.isDirectory() && !item.name.startsWith('.')) {
-        const itemPath = join(currentDir, item.name);
-        const knowledgeNodePath = join(itemPath, '.knowledge-node');
-
-        // Create .knowledge-node folder
-        await mkdir(knowledgeNodePath, { recursive: true });
-
-        // Create .knowledge-node.json file
-        const knowledgeNodeJson = {
-          version: '1.0.0',
-          nodes: [],
-          relationships: [],
-        };
-
-        await writeFile(
-          join(knowledgeNodePath, '.knowledge-node.json'),
-          JSON.stringify(knowledgeNodeJson, null, 2)
-        );
-
-        // Traverse subdirectories
-        await traverseDir(itemPath);
-      }
-    }
-  };
-
-  await traverseDir(rootDir);
-}
-
-/**
- * Generates knowledge graph from target folder
- * @param targetFolder - Target folder path to generate knowledge graph from
- * @throws {FileSystemError} When file reading fails
- */
-async function generateKnowledgeGraph(targetFolder: string) {
-  console.log(chalk.blue(`Starting knowledge graph generation for: ${targetFolder}`));
-
-  // Generate knowledge graph using DFS traversal
-  const dfsTraverse = async (currentDir: string) => {
-    try {
-      const items = await readdir(currentDir, { withFileTypes: true });
-
-      for (const item of items) {
-        if (item.isDirectory() && !item.name.startsWith('.')) {
-          const itemPath = join(currentDir, item.name);
-
-          // Skip common build/cache directories
-          const skipDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'coverage', '.nyc_output', '.cache', '.parcel-cache', '.vscode', '.idea', 'vendor', 'target', 'out', 'bin', 'obj'];
-          if (skipDirs.includes(item.name)) {
-            continue;
-          }
-
-          console.log(chalk.gray(`Processing directory: ${itemPath}`));
-
-          // Find source files in this directory
-          const sourceFiles = await findSourceFiles(itemPath);
-
-          if (sourceFiles.length > 0) {
-            console.log(chalk.blue(`Found ${sourceFiles.length} source files in ${itemPath}`));
-
-            // Create knowledge graph from source files
-            const localKnowledgeGraph = await createKnowledgeGraphFromFiles(sourceFiles, itemPath);
-
-            // Save knowledge graph to .knowledge-node/.knowledge-node.json
-            await saveKnowledgeGraph(itemPath, localKnowledgeGraph);
-
-            // Add to global knowledge graph
-            knowledgeGraph.nodes.push(...localKnowledgeGraph.nodes);
-            knowledgeGraph.relationships.push(...localKnowledgeGraph.relationships);
-
-            console.log(chalk.green(`Generated knowledge graph for ${itemPath}`));
-          } else {
-            console.log(chalk.gray(`No source files found in ${itemPath}`));
-          }
-
-          // Continue traversing subdirectories
-          await dfsTraverse(itemPath);
-        }
-      }
-    } catch (error) {
-      console.warn(chalk.yellow(`Warning: Could not process directory ${currentDir}: ${error}`));
-    }
-  };
-
-  await dfsTraverse(targetFolder);
-  console.log(chalk.green(`Knowledge graph generation completed. Total nodes: ${knowledgeGraph.nodes.length}, Total relationships: ${knowledgeGraph.relationships.length}`));
-}
-
-/**
- * Updates knowledge graph based on Git diff
- * @param gitDiff - Git diff information
- */
-async function updateKnowledgeGraph(gitDiff: string) {
-  // Parse Git diff to extract changed files
-  const changedFiles = gitDiff
-    .split('\n')
-    .filter(line => line.startsWith('+++') || line.startsWith('---'))
-    .map(line => line.substring(4))
-    .filter(file => file && !file.startsWith('/dev/null'));
-
-  console.log(
-    chalk.blue(`Number of changed files: ${changedFiles.length}`)
-  );
-
-  // Update knowledge graph for changed files
-  for (const file of changedFiles) {
-    console.log(chalk.gray(`Updating: ${file}`));
-  }
-}
-
-/**
- * Generates private knowledge graph
- * @param rootDirectory - Project root directory path
- * @param purpose - Purpose of knowledge graph generation
- * @throws {FileSystemError} When directory creation or file writing fails
- */
-async function generatePrivateKnowledge(rootDirectory: string, purpose: string) {
-  const myKnowledgePath = join(rootDirectory, '.my-knowledge');
-  await mkdir(myKnowledgePath, { recursive: true });
-
-  const privateKnowledgeData = {
-    version: '1.0.0',
-    purpose: purpose,
-    nodes: [],
-    relationships: [],
-  };
-
-  await writeFile(
-    join(myKnowledgePath, 'private-knowledge.json'),
-    JSON.stringify(privateKnowledgeData, null, 2)
-  );
-}
-
-/**
- * Clears all knowledge files from the file system
- * @param rootDir - Root directory path to clear knowledge files from
- * @throws {FileSystemError} When file deletion fails
- */
-async function clearKnowledgeFiles(rootDir?: string) {
-  // Directories to skip during traversal
-  const skipDirs = new Set([
-    'node_modules',
-    '.git',
-    'dist',
-    'build',
-    '.next',
-    '.nuxt',
-    'coverage',
-    '.nyc_output',
-    '.cache',
-    '.parcel-cache',
-    '.vscode',
-    '.idea',
-    'vendor',
-    'target',
-    'out',
-    'bin',
-    'obj'
-  ]);
-
-  const clearDir = async (currentDir: string) => {
-    try {
-      const items = await readdir(currentDir, { withFileTypes: true });
-
-      for (const item of items) {
-        if (item.isDirectory()) {
-          const itemPath = join(currentDir, item.name);
-
-          // Skip certain directories (but allow .knowledge-* and .my-knowledge)
-          if (skipDirs.has(item.name) ||
-            (item.name.startsWith('.') &&
-              !item.name.startsWith('.knowledge-') &&
-              item.name !== '.my-knowledge')) {
-            continue;
-          }
-
-          // Remove .knowledge-root folder
-          if (item.name === '.knowledge-root') {
-            await rm(itemPath, { recursive: true, force: true });
-            console.log(chalk.gray(`Removed: ${itemPath}`));
-            continue; // Skip traversing into deleted directory
-          }
-
-          // Remove .knowledge-node folder
-          if (item.name === '.knowledge-node') {
-            await rm(itemPath, { recursive: true, force: true });
-            console.log(chalk.gray(`Removed: ${itemPath}`));
-            continue; // Skip traversing into deleted directory
-          }
-
-          // Remove .my-knowledge folder
-          if (item.name === '.my-knowledge') {
-            await rm(itemPath, { recursive: true, force: true });
-            console.log(chalk.gray(`Removed: ${itemPath}`));
-            continue; // Skip traversing into deleted directory
-          }
-
-          // Traverse subdirectories
-          await clearDir(itemPath);
-        }
-      }
-    } catch (error) {
-      // Ignore ENOENT errors (directory doesn't exist)
-      if (error instanceof Error && error.message.includes('ENOENT')) {
-        return;
-      }
-      throw error;
-    }
-  };
-
-  if (rootDir) {
-    await clearDir(rootDir);
-  } else {
-    // If no root directory specified, clear from current working directory
-    await clearDir(process.cwd());
-  }
-}
-
-/**
- * Starts MCP server
- */
 async function startServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -749,10 +262,6 @@ async function startServer() {
   );
 }
 
-/**
- * Handles main execution logic
- * Always runs in MCP server mode
- */
 async function main() {
   await startServer();
 }
@@ -770,7 +279,7 @@ process.on('unhandledRejection', (reason) => {
 
 // Program execution
 main().catch((error) => {
-  if (error instanceof KnowledgeGraphError) {
+  if (error instanceof Error && (error as any).code) {
     console.error(
       chalk.red('Error occurred during program execution:'),
       error.message

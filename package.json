@@ -14,11 +14,7 @@
     "dev:server": "ts-node src/index.ts",
     "cli": "node scripts/simple-cli.js",
     "watch": "tsc --watch",
-    "clean": "rm -rf dist",
-    "test:create": "node scripts/simple-cli.js create ./test-project",
-    "test:setup": "node scripts/simple-cli.js setup ./test-project",
-    "test:generate": "node scripts/simple-cli.js generate ./test-project",
-    "test:clear": "node scripts/simple-cli.js clear ./test-project"
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "mcp",
