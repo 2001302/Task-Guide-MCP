@@ -1,9 +1,10 @@
-# SRS(Software Requirement Specification)
+SRS(Software Requirement Specification)
 
 ## System Architecture
 ---
 ### Project Dependencies
-- knowledge-graph-driven-project-management-mcp
+- knowledge-graph-driven-project-management-plugin
+	- knowledge-graph-driven-project-management-mcp
 
 ## Software Design
 ---
@@ -11,53 +12,23 @@
 지식그래프 기반 프로젝트 관리를 위한 핵심 MCP서버
 #### dependency
 - @modelcontextprotocol/sdk: MCP(Model Context Protocol) 서버 구현을 위한 핵심 SDK.
-- zod: 스키마 정의 및 유효성 검사를 위한 라이브러리.
-- yargs: 커맨드 라인 인자(argument)를 파싱하고 처리하는 라이브러리.
-- chalk: 터미널 출력에 색상을 입히는 라이브러리.
-- @itseasy21/mcp-knowledge-graph: 지식그래프 생성
 #### files
+##### .knowledge-root/
+- config.json
+- ignore.json
 ##### .knowledge-node.json
-- 기본적으로 폴더별로 지식그래프를 관리
-	- 트리구조로 상위 폴더의 node는 하위 폴더의 모든 node를 탐색. 
-	- 하위 폴더의 node가 없다면 모든 파일을 탐색. 
-##### .knowledge-ignore.json
-- 지식그래프에서 무시할 항목을 추가
-##### .knowledge-rule.mdc
-- .mdc 형식
-- description
-	- purpose
-	- folder 구조
-- alwaysApply : false
-	- 새로운 chat을 시작할 때 먼저 읽고 시작하라고 명시
-- read .knowledge-node.json
-	- 같은 폴더의 지식 그래프를 참조
-- search child rule
-	- 하위 폴더의 rule이 있다면 참조
+- 폴더별로 .knowledge-node.json 이 존재
+- 가지고 있어야 하는 데이터
+	- 지금 노드의 목적
+	- current directory의 파일들에 대한 요약정보
+	- child의 .knowledge-node.json 요약정보
+- 최종적으로 root에서 가장 먼 node의 정보들이 parent를 거치면서 계속 쌓이는 것을 원함
+
+
 #### api
-- setup
-	- root-directory/.knowledge-root 폴더를 생성
-		- .config.yaml
-		- .knowledge-node.json
-		- .knowledge-ignore.json
-	- 모든 directory를 순회하며 .knowledge-node 폴더를 생성하여 지식그래프에 file+node 목록을 채워넣음
-		- .knowledge-node.json
-		- .knowledge-rule.mdc
-- generate
-	- args
-		- target root 폴더 입력 필요
-	- target root directory를 기준으로 dfs 순회
-		- current directory내의 소스코드 파일을 기반으로 @itseasy21/mcp-knowledge-graph을 사용하여 지식그래프 생성. 생성된 결과물이 /.knowledge-node.json이다.
-        - 만약 current directory내의 폴더가 있고 그 폴더안에 .knowledge-node폴더가 있다면 child 이므로 해당 경로만 지식그래프에 추가한다. 
-        어차피 순회 돌다가 이미 처리된 knowledge-node 이므로
-- update
-	- args
-		- git diff 입력 필요
-- private-knowledge 
-	- root-directory/.my-knowledge 생성
-	- 무슨 일을 할 것인지 물어봄
-	- 자신의 일과 관련있는 node만을 수집
-- clear
-	- 모든 directory를 순회하며 모든 knowledge 정리
+- build
+	- 폴더별로 .knowledge-node.json 생성
+	- 
 
 ### unit test
 #### publish
