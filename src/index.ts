@@ -23,29 +23,7 @@ let knowledgeTree: KnowledgeTree = new KnowledgeTree();
 // Define tool list
 const tools = [
   {
-    name: 'get-context',
-    description: 'Get AI context for a specific node',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        nodeName: {
-          type: 'string',
-          description: 'Name of the node to get context for',
-        },
-        includeSiblings: {
-          type: 'boolean',
-          description: 'Whether to include sibling nodes in context',
-        },
-        maxDepth: {
-          type: 'number',
-          description: 'Maximum depth of child nodes to include',
-        },
-      },
-      required: ['nodeName'],
-    },
-  },
-  {
-    name: 'build-tree',
+    name: 'build',
     description: 'Build knowledge tree from existing knowledge graph',
     inputSchema: {
       type: 'object',
@@ -57,20 +35,7 @@ const tools = [
       },
       required: ['rootDirectory'],
     },
-  },
-  {
-    name: 'get-tree-info',
-    description: 'Get information about the knowledge tree structure',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        nodeName: {
-          type: 'string',
-          description: 'Optional specific node to get info for',
-        },
-      },
-    },
-  },
+  }
 ];
 
 // Tool list handler
@@ -86,49 +51,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
-      case 'get-context': {
-        const { nodeName, includeSiblings = true } = args as {
-          nodeName: string;
-          includeSiblings?: boolean;
-          maxDepth?: number;
-        };
-
-        if (!nodeName || typeof nodeName !== 'string') {
-          const error = new Error('Node name is required and must be a string');
-          (error as any).code = ErrorCode.VALIDATION_ERROR;
-          (error as any).field = 'nodeName';
-          throw error;
-        }
-
-        console.log(chalk.blue(`Getting AI context for node: ${nodeName}`));
-
-        const context = knowledgeTree.getContextualAIContext(nodeName, includeSiblings);
-        
-        if (context.includes('not found')) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Node '${nodeName}' not found in knowledge tree.`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        console.log(chalk.green('AI context generated successfully.'));
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: context,
-            },
-          ],
-        };
-      }
-
-      case 'build-tree': {
+      case 'build': {
         const { rootDirectory } = args as { rootDirectory: string };
 
         if (!rootDirectory || typeof rootDirectory !== 'string') {
@@ -153,65 +76,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             },
           ],
         };
-      }
-
-      case 'get-tree-info': {
-        const { nodeName } = args as { nodeName?: string };
-
-        console.log(chalk.blue('Getting knowledge tree information...'));
-
-        if (nodeName) {
-          const node = knowledgeTree.findNode(nodeName);
-          if (!node) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Node '${nodeName}' not found in knowledge tree.`,
-                },
-              ],
-              isError: true,
-            };
-          }
-
-          const info = {
-            name: node.data.name,
-            type: node.data.entityType,
-            path: node.data.path,
-            depth: node.getDepth(),
-            isRoot: node.isRoot(),
-            isLeaf: node.isLeaf(),
-            childrenCount: node.children.length,
-            fullPath: node.getFullPath(),
-          };
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `**Node Information:**\n${JSON.stringify(info, null, 2)}`,
-              },
-            ],
-          };
-        } else {
-          const info = {
-            totalNodes: knowledgeTree.getSize(),
-            maxDepth: knowledgeTree.getMaxDepth(),
-            hasRoot: knowledgeTree.root !== null,
-            rootName: knowledgeTree.root?.data.name || 'None',
-          };
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `**Tree Information:**\n${JSON.stringify(info, null, 2)}\n\n**Tree Structure:**\n${knowledgeTree.toString()}`,
-              },
-            ],
-          };
-        }
-      }
-
+      } 
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

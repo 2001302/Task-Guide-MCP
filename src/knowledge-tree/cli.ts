@@ -352,13 +352,13 @@ Commands:
   help           Show this help message.
 
 Examples:
-  knowledge-tree sample                # Create sample project in ./sample-project
-  knowledge-tree sample ./my-test      # Create sample project in ./my-test
-  knowledge-tree new                   # Start from current directory
-  knowledge-tree new ./src             # Start from src directory
-  knowledge-tree build                 # Build in current directory
-  knowledge-tree show ./docs           # Show content of docs directory
-  knowledge-tree remove                # Delete all .knowledge-node.json files
+  node dist/knowledge-tree/cli.js sample                # Create sample project in ./sample-project
+  node dist/knowledge-tree/cli.js sample ./my-test      # Create sample project in ./my-test
+  node dist/knowledge-tree/cli.js new                   # Start from current directory
+  node dist/knowledge-tree/cli.js new ./src             # Start from src directory
+  node dist/knowledge-tree/cli.js build                 # Build in current directory
+  node dist/knowledge-tree/cli.js show ./docs           # Show content of docs directory
+  node dist/knowledge-tree/cli.js remove                # Delete all .knowledge-node.json files
 `);
   }
 }
