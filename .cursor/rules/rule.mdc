@@ -1,15 +1,5 @@
 ---
-description: Read this rule at the start of every new chat
-globs:
 alwaysApply: false
 ---
 
-# New Chat Start Rule
-
-Read this rule file first at the start of every new chat and check the following:
-
-- Always respond in Korean
-- Write code that matches the existing code style
-- All comments and strings in the `src/` directory should be written in English
-- Do not use emojis
-- All documents in the `docs/` directory should be written in Korean
+* All content must be written in English.
