@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Guidance 관련 타입 정의
+// Guidance-related type definitions
 export const GuidanceSummarySchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -19,7 +19,7 @@ export const GuidanceSummarySchema = z.object({
 
 export type GuidanceSummary = z.infer<typeof GuidanceSummarySchema>;
 
-// 메타데이터 벡터 타입
+// Metadata vector type
 export interface MetadataVector {
   id: string;
   guidanceId: string;
@@ -37,7 +37,7 @@ export interface MetadataVector {
   createdAt: string;
 }
 
-// 계층적 구조 타입
+// Hierarchical structure type
 export interface HierarchicalNode {
   id: string;
   type: 'directory' | 'file' | 'function' | 'class' | 'interface';
@@ -54,7 +54,7 @@ export interface HierarchicalNode {
   };
 }
 
-// 검색 결과 타입
+// Search result type
 export interface SearchResult {
   id: string;
   type: 'code' | 'document' | 'guidance';
@@ -68,7 +68,7 @@ export interface SearchResult {
   };
 }
 
-// MCP 도구 타입
+// MCP tool types
 export interface CreateGuidanceParams {
   title: string;
   objective: string;

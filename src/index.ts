@@ -38,111 +38,111 @@ class TaskGuideMCPServer {
   }
 
   private setupHandlers(): void {
-    // 도구 목록 제공
+    // Provide tool list
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
           {
-            name: 'create_guidance',
-            description: '새로운 작업 가이드를 생성합니다',
+        name: 'create_guidance',
+        description: 'Creates a new task guidance',
             inputSchema: {
               type: 'object',
               properties: {
                 title: {
                   type: 'string',
-                  description: '가이드 제목',
+                  description: 'Guide title',
                 },
                 objective: {
                   type: 'string',
-                  description: '작업 목표',
+                  description: 'Task objective',
                 },
                 technicalConstraints: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '기술적 제약 사항',
+                  description: 'Technical constraints',
                 },
                 workRules: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '작업 규칙',
+                  description: 'Work rules',
                 },
                 completionCriteria: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '완료 기준',
+                  description: 'Completion criteria',
                 },
                 tags: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '태그 (선택사항)',
+                  description: 'Tags (optional)',
                 },
                 priority: {
                   type: 'string',
                   enum: ['low', 'medium', 'high'],
-                  description: '우선순위 (선택사항)',
+                  description: 'Priority (optional)',
                 },
               },
               required: ['title', 'objective', 'technicalConstraints', 'workRules', 'completionCriteria'],
             },
           },
           {
-            name: 'update_guidance',
-            description: '기존 작업 가이드를 업데이트합니다',
+        name: 'update_guidance',
+        description: 'Updates an existing task guidance',
             inputSchema: {
               type: 'object',
               properties: {
                 id: {
                   type: 'string',
-                  description: '가이드 ID',
+                  description: 'Guide ID',
                 },
                 title: {
                   type: 'string',
-                  description: '가이드 제목 (선택사항)',
+                  description: 'Guide title (optional)',
                 },
                 objective: {
                   type: 'string',
-                  description: '작업 목표 (선택사항)',
+                  description: 'Task objective (optional)',
                 },
                 technicalConstraints: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '기술적 제약 사항 (선택사항)',
+                  description: 'Technical constraints (optional)',
                 },
                 workRules: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '작업 규칙 (선택사항)',
+                  description: 'Work rules (optional)',
                 },
                 completionCriteria: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '완료 기준 (선택사항)',
+                  description: 'Completion criteria (optional)',
                 },
                 tags: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '태그 (선택사항)',
+                  description: 'Tags (optional)',
                 },
                 priority: {
                   type: 'string',
                   enum: ['low', 'medium', 'high'],
-                  description: '우선순위 (선택사항)',
+                  description: 'Priority (optional)',
                 },
               },
               required: ['id'],
             },
           },
           {
-            name: 'list_guidances',
-            description: '모든 작업 가이드 목록을 조회합니다',
+        name: 'list_guidances',
+        description: 'Lists all task guidances',
             inputSchema: {
               type: 'object',
               properties: {},
             },
           },
           {
-            name: 'get_guidance',
-            description: '특정 작업 가이드를 조회합니다',
+        name: 'get_guidance',
+        description: 'Retrieves a specific task guidance',
             inputSchema: {
               type: 'object',
               properties: {
@@ -155,8 +155,8 @@ class TaskGuideMCPServer {
             },
           },
           {
-            name: 'delete_guidance',
-            description: '작업 가이드를 삭제합니다',
+        name: 'delete_guidance',
+        description: 'Deletes a task guidance',
             inputSchema: {
               type: 'object',
               properties: {
@@ -169,68 +169,68 @@ class TaskGuideMCPServer {
             },
           },
           {
-            name: 'index_guidance',
-            description: '가이드에 대한 코드베이스와 문서를 인덱싱합니다',
+        name: 'index_guidance',
+        description: 'Indexes codebase and documents for a guidance',
             inputSchema: {
               type: 'object',
               properties: {
                 guidanceId: {
                   type: 'string',
-                  description: '가이드 ID',
+                  description: 'Guide ID',
                 },
                 codebasePath: {
                   type: 'string',
-                  description: '코드베이스 경로 (선택사항)',
+                  description: 'Codebase path (optional)',
                 },
                 externalDocs: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '외부 문서 경로들 (선택사항)',
+                  description: 'External document paths (optional)',
                 },
               },
               required: ['guidanceId'],
             },
           },
           {
-            name: 'search',
-            description: '하이브리드 검색을 수행합니다',
+        name: 'search',
+        description: 'Performs hybrid search',
             inputSchema: {
               type: 'object',
               properties: {
                 query: {
                   type: 'string',
-                  description: '검색 쿼리',
+                  description: 'Search query',
                 },
                 guidanceId: {
                   type: 'string',
-                  description: '특정 가이드 ID로 검색 제한 (선택사항)',
+                  description: 'Limit search to specific guide ID (optional)',
                 },
                 type: {
                   type: 'string',
                   enum: ['code', 'document', 'guidance', 'all'],
-                  description: '검색 타입 (선택사항)',
+                  description: 'Search type (optional)',
                 },
                 limit: {
                   type: 'number',
-                  description: '결과 제한 수 (선택사항, 기본값: 10)',
+                  description: 'Result limit (optional, default: 10)',
                 },
                 threshold: {
                   type: 'number',
-                  description: '유사도 임계값 (선택사항, 기본값: 0.5)',
+                  description: 'Similarity threshold (optional, default: 0.5)',
                 },
               },
               required: ['query'],
             },
           },
           {
-            name: 'build_hierarchy',
-            description: '코드베이스의 계층 구조를 구축합니다',
+        name: 'build_hierarchy',
+        description: 'Builds hierarchical structure of codebase',
             inputSchema: {
               type: 'object',
               properties: {
                 rootPath: {
                   type: 'string',
-                  description: '루트 경로',
+                  description: 'Root path',
                 },
               },
               required: ['rootPath'],
@@ -240,7 +240,7 @@ class TaskGuideMCPServer {
       };
     });
 
-    // 도구 실행 처리
+    // Handle tool execution
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
 
@@ -275,14 +275,14 @@ class TaskGuideMCPServer {
             return await this.handleBuildHierarchy(args as { rootPath: string });
 
           default:
-            throw new Error(`알 수 없는 도구: ${name}`);
+            throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
         return {
           content: [
             {
               type: 'text',
-              text: `오류 발생: ${error instanceof Error ? error.message : String(error)}`,
+              text: `Error occurred: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -298,7 +298,7 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `가이드가 성공적으로 생성되었습니다:\n\n${JSON.stringify(guidance, null, 2)}`,
+          text: `Guidance created successfully:\n\n${JSON.stringify(guidance, null, 2)}`,
         },
       ],
     };
@@ -311,7 +311,7 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `가이드가 성공적으로 업데이트되었습니다:\n\n${JSON.stringify(guidance, null, 2)}`,
+          text: `Guidance updated successfully:\n\n${JSON.stringify(guidance, null, 2)}`,
         },
       ],
     };
@@ -324,10 +324,10 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `총 ${guidances.length}개의 가이드가 있습니다:\n\n${guidances
+          text: `Total ${guidances.length} guidances found:\n\n${guidances
             .map(
               (g) =>
-                `- ${g.title} (ID: ${g.id})\n  목표: ${g.objective}\n  우선순위: ${g.metadata.priority}\n  업데이트: ${g.metadata.updatedAt}`
+                `- ${g.title} (ID: ${g.id})\n  Objective: ${g.objective}\n  Priority: ${g.metadata.priority}\n  Updated: ${g.metadata.updatedAt}`
             )
             .join('\n\n')}`,
         },
@@ -343,7 +343,7 @@ class TaskGuideMCPServer {
         content: [
           {
             type: 'text',
-            text: `가이드를 찾을 수 없습니다: ${args.id}`,
+            text: `Guidance not found: ${args.id}`,
           },
         ],
       };
@@ -353,7 +353,7 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `가이드 정보:\n\n${JSON.stringify(guidance, null, 2)}`,
+          text: `Guidance information:\n\n${JSON.stringify(guidance, null, 2)}`,
         },
       ],
     };
@@ -367,8 +367,8 @@ class TaskGuideMCPServer {
         {
           type: 'text',
           text: success
-            ? `가이드가 성공적으로 삭제되었습니다: ${args.id}`
-            : `가이드 삭제에 실패했습니다: ${args.id}`,
+            ? `Guidance deleted successfully: ${args.id}`
+            : `Failed to delete guidance: ${args.id}`,
         },
       ],
     };
@@ -389,7 +389,7 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `가이드 인덱싱이 완료되었습니다: ${args.guidanceId}`,
+          text: `Guidance indexing completed: ${args.guidanceId}`,
         },
       ],
     };
@@ -402,10 +402,10 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `검색 결과 (${results.length}개):\n\n${results
+          text: `Search results (${results.length} found):\n\n${results
             .map(
               (result, index) =>
-                `${index + 1}. [${result.type}] ${result.metadata.source}\n   점수: ${result.score.toFixed(3)}\n   내용: ${result.content.substring(0, 200)}...`
+                `${index + 1}. [${result.type}] ${result.metadata.source}\n   Score: ${result.score.toFixed(3)}\n   Content: ${result.content.substring(0, 200)}...`
             )
             .join('\n\n')}`,
         },
@@ -421,7 +421,7 @@ class TaskGuideMCPServer {
       content: [
         {
           type: 'text',
-          text: `계층 구조가 구축되었습니다: ${args.rootPath}\n총 ${nodes.length}개의 노드가 생성되었습니다.`,
+          text: `Hierarchical structure built: ${args.rootPath}\nTotal ${nodes.length} nodes created.`,
         },
       ],
     };
@@ -430,13 +430,13 @@ class TaskGuideMCPServer {
   async run(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Task Guide MCP 서버가 시작되었습니다.');
+    console.error('Task Guide MCP server started.');
   }
 }
 
-// 서버 시작
+// Start server
 const server = new TaskGuideMCPServer();
 server.run().catch((error) => {
-  console.error('서버 실행 중 오류 발생:', error);
+  console.error('Error occurred while running server:', error);
   process.exit(1);
 });

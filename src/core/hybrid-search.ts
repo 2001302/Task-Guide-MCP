@@ -17,7 +17,7 @@ export class HybridSearch {
   }
 
   private initializeDatabase(): void {
-    // 벡터 저장 테이블
+    // Vector storage table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS vectors (
         id TEXT PRIMARY KEY,
@@ -32,7 +32,7 @@ export class HybridSearch {
       )
     `);
 
-    // 구조적 인덱스 테이블
+    // Structural index table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS structural_index (
         id TEXT PRIMARY KEY,
@@ -48,7 +48,7 @@ export class HybridSearch {
       )
     `);
 
-    // 지식 그래프 테이블
+    // Knowledge graph table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS knowledge_graph (
         id TEXT PRIMARY KEY,
@@ -65,36 +65,36 @@ export class HybridSearch {
   }
 
   async indexGuidance(guidanceId: string, codebasePath?: string, externalDocs?: string[]): Promise<void> {
-    console.log(`Guidance 인덱싱 시작: ${guidanceId}`);
+    console.log(`Starting guidance indexing: ${guidanceId}`);
 
-    // 1. 코드베이스 인덱싱
+    // 1. Codebase indexing
     if (codebasePath) {
       await this.indexCodebase(guidanceId, codebasePath);
     }
 
-    // 2. 외부 문서 인덱싱
+    // 2. External document indexing
     if (externalDocs && externalDocs.length > 0) {
       await this.indexExternalDocuments(guidanceId, externalDocs);
     }
 
-    // 3. 지식 그래프 구축
+    // 3. Knowledge graph construction
     await this.buildKnowledgeGraph(guidanceId);
 
-    console.log(`Guidance 인덱싱 완료: ${guidanceId}`);
+    console.log(`Guidance indexing completed: ${guidanceId}`);
   }
 
   private async indexCodebase(guidanceId: string, codebasePath: string): Promise<void> {
-    // 계층적 RAG를 사용하여 코드베이스 구조 분석
+    // Analyze codebase structure using hierarchical RAG
     await this.hierarchicalRAG.buildHierarchy(codebasePath);
     
     const nodes = this.hierarchicalRAG.getAllNodes();
     
     for (const node of nodes) {
       if (node.content) {
-        // 벡터 임베딩 생성
+        // Generate vector embedding
         const embedding = await this.generateEmbedding(node.content);
         
-        // 벡터 저장
+        // Store vector
         const vectorId = uuidv4();
         const vector: MetadataVector = {
           id: vectorId,
@@ -113,7 +113,7 @@ export class HybridSearch {
 
         await this.storeVector(vector);
 
-        // 구조적 인덱스 저장
+        // Store structural index
         await this.storeStructuralIndex(guidanceId, node);
       }
     }
@@ -144,7 +144,7 @@ export class HybridSearch {
           await this.storeVector(vector);
         }
       } catch (error) {
-        console.error(`외부 문서 인덱싱 실패: ${docPath}`, error);
+        console.error(`Failed to index external document: ${docPath}`, error);
       }
     }
   }
@@ -161,18 +161,18 @@ export class HybridSearch {
           const jsonContent = await fs.readFile(filePath, 'utf-8');
           return JSON.stringify(JSON.parse(jsonContent), null, 2);
         default:
-          console.warn(`지원하지 않는 파일 형식: ${ext}`);
+          console.warn(`Unsupported file format: ${ext}`);
           return null;
       }
     } catch (error) {
-      console.error(`문서 내용 추출 실패: ${filePath}`, error);
+      console.error(`Failed to extract document content: ${filePath}`, error);
       return null;
     }
   }
 
   private async generateEmbedding(text: string): Promise<number[]> {
-    // 간단한 해시 기반 임베딩 (실제로는 OpenAI API 등을 사용)
-    // 실제 구현에서는 OpenAI의 text-embedding-ada-002 등을 사용
+    // Simple hash-based embedding (in practice, use OpenAI API etc.)
+    // In actual implementation, use OpenAI's text-embedding-ada-002 etc.
     const hash = this.simpleHash(text);
     const embedding = new Array(1536).fill(0);
     
@@ -288,14 +288,14 @@ export class HybridSearch {
   }
 
   private async buildKnowledgeGraph(guidanceId: string): Promise<void> {
-    // 벡터 간의 유사도 기반으로 관계 구축
+    // Build relationships based on similarity between vectors
     const vectors = this.getVectorsByGuidance(guidanceId);
     
     for (let i = 0; i < vectors.length; i++) {
       for (let j = i + 1; j < vectors.length; j++) {
         const similarity = this.calculateSimilarity(vectors[i].embedding, vectors[j].embedding);
         
-        if (similarity > 0.7) { // 임계값
+        if (similarity > 0.7) { // Threshold
           await this.addRelation(vectors[i].id, vectors[j].id, 'similar', similarity);
         }
       }
@@ -353,19 +353,19 @@ export class HybridSearch {
   async search(params: SearchParams): Promise<SearchResult[]> {
     const { query, guidanceId, type = 'all', limit = 10, threshold = 0.5 } = params;
     
-    // 1. 벡터 검색 (의미적 검색)
+    // 1. Vector search (semantic search)
     const vectorResults = await this.vectorSearch(query, guidanceId, type, limit * 2);
     
-    // 2. 구조적 검색
+    // 2. Structural search
     const structuralResults = await this.structuralSearch(query, guidanceId, type, limit * 2);
     
-    // 3. 지식 그래프 검색
+    // 3. Knowledge graph search
     const graphResults = await this.graphSearch(query, guidanceId, limit);
     
-    // 4. 결과 통합 및 랭킹
+    // 4. Result integration and ranking
     const combinedResults = this.combineResults(vectorResults, structuralResults, graphResults, query);
     
-    // 5. 임계값 필터링 및 제한
+    // 5. Threshold filtering and limiting
     return combinedResults
       .filter(result => result.score >= threshold)
       .slice(0, limit);
@@ -454,11 +454,11 @@ export class HybridSearch {
   }
 
   private async graphSearch(query: string, guidanceId?: string, limit?: number): Promise<SearchResult[]> {
-    // 지식 그래프를 통한 관련 노드 검색
+    // Search related nodes through knowledge graph
     const results: SearchResult[] = [];
     
-    // 구현 생략 (복잡한 그래프 탐색 로직)
-    // 실제로는 그래프 데이터베이스나 복잡한 쿼리 로직이 필요
+    // Implementation omitted (complex graph traversal logic)
+    // In practice, graph database or complex query logic is needed
     
     return results;
   }
@@ -470,7 +470,7 @@ export class HybridSearch {
     if (node.path.toLowerCase().includes(query)) score += 5;
     if (node.content && node.content.toLowerCase().includes(query)) score += 3;
     
-    return score / 18; // 정규화
+    return score / 18; // Normalization
   }
 
   private combineResults(
@@ -481,7 +481,7 @@ export class HybridSearch {
   ): SearchResult[] {
     const combined = new Map<string, SearchResult>();
     
-    // 벡터 검색 결과 (가중치 0.4)
+    // Vector search results (weight 0.4)
     for (const result of vectorResults) {
       const existing = combined.get(result.id);
       if (existing) {
@@ -492,7 +492,7 @@ export class HybridSearch {
       }
     }
     
-    // 구조적 검색 결과 (가중치 0.3)
+    // Structural search results (weight 0.3)
     for (const result of structuralResults) {
       const existing = combined.get(result.id);
       if (existing) {
@@ -503,7 +503,7 @@ export class HybridSearch {
       }
     }
     
-    // 그래프 검색 결과 (가중치 0.3)
+    // Graph search results (weight 0.3)
     for (const result of graphResults) {
       const existing = combined.get(result.id);
       if (existing) {

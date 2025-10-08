@@ -13,18 +13,18 @@ export class HierarchicalRAG {
   }
 
   async buildHierarchy(rootPath: string): Promise<void> {
-    console.log(`계층 구조 구축 시작: ${rootPath}`);
+    console.log(`Building hierarchical structure: ${rootPath}`);
     
-    // 디렉토리 구조 스캔
+    // Scan directory structure
     await this.scanDirectory(rootPath, null);
     
-    // 파일 내용 분석
+    // Analyze file contents
     await this.analyzeFiles();
     
-    // 계층 관계 설정
+    // Set hierarchical relationships
     this.buildRelationships();
     
-    console.log(`계층 구조 구축 완료: ${this.nodes.size}개 노드`);
+    console.log(`Hierarchical structure built: ${this.nodes.size} nodes`);
   }
 
   private async scanDirectory(dirPath: string, parentId: string | null): Promise<void> {
@@ -36,7 +36,7 @@ export class HierarchicalRAG {
         const nodeId = this.generateNodeId(fullPath);
         
         if (entry.isDirectory()) {
-          // 디렉토리 노드 생성
+          // Create directory node
           const node: HierarchicalNode = {
             id: nodeId,
             type: 'directory',
@@ -51,10 +51,10 @@ export class HierarchicalRAG {
           
           this.nodes.set(nodeId, node);
           
-          // 하위 디렉토리 스캔
+          // Scan subdirectories
           await this.scanDirectory(fullPath, nodeId);
         } else if (this.isCodeFile(entry.name)) {
-          // 파일 노드 생성
+          // Create file node
           const node: HierarchicalNode = {
             id: nodeId,
             type: 'file',
@@ -72,7 +72,7 @@ export class HierarchicalRAG {
         }
       }
     } catch (error) {
-      console.error(`디렉토리 스캔 실패: ${dirPath}`, error);
+      console.error(`Failed to scan directory: ${dirPath}`, error);
     }
   }
 
@@ -83,7 +83,7 @@ export class HierarchicalRAG {
           const content = await fs.readFile(node.path, 'utf-8');
           node.content = content;
           
-          // 함수, 클래스, 인터페이스 추출
+          // Extract functions, classes, interfaces
           const codeElements = this.extractCodeElements(content, node.metadata.language);
           
           for (const element of codeElements) {
@@ -106,7 +106,7 @@ export class HierarchicalRAG {
             this.nodes.set(elementId, elementNode);
           }
         } catch (error) {
-          console.error(`파일 분석 실패: ${node.path}`, error);
+          console.error(`Failed to analyze file: ${node.path}`, error);
         }
       }
     }
@@ -131,14 +131,14 @@ export class HierarchicalRAG {
     const elements: Array<{ name: string; type: string; content: string }> = [];
     
     if (language === 'typescript' || language === 'javascript') {
-      // TypeScript/JavaScript 함수, 클래스, 인터페이스 추출
+      // Extract TypeScript/JavaScript functions, classes, interfaces
       const functionRegex = /(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{[^}]*\}/g;
       const classRegex = /(?:export\s+)?class\s+(\w+)(?:\s+extends\s+\w+)?\s*\{[^}]*\}/g;
       const interfaceRegex = /(?:export\s+)?interface\s+(\w+)\s*\{[^}]*\}/g;
       
       let match;
       
-      // 함수 추출
+      // Extract functions
       while ((match = functionRegex.exec(content)) !== null) {
         elements.push({
           name: match[1],
@@ -147,7 +147,7 @@ export class HierarchicalRAG {
         });
       }
       
-      // 클래스 추출
+      // Extract classes
       while ((match = classRegex.exec(content)) !== null) {
         elements.push({
           name: match[1],
@@ -156,7 +156,7 @@ export class HierarchicalRAG {
         });
       }
       
-      // 인터페이스 추출
+      // Extract interfaces
       while ((match = interfaceRegex.exec(content)) !== null) {
         elements.push({
           name: match[1],
@@ -170,7 +170,7 @@ export class HierarchicalRAG {
   }
 
   private calculateComplexity(content: string): number {
-    // 간단한 복잡도 계산 (순환복잡도 기반)
+    // Simple complexity calculation (based on cyclomatic complexity)
     const complexityKeywords = ['if', 'else', 'for', 'while', 'switch', 'case', 'catch', '&&', '||'];
     let complexity = 1;
     
@@ -187,7 +187,7 @@ export class HierarchicalRAG {
   private extractDependencies(content: string): string[] {
     const dependencies: string[] = [];
     
-    // import 문 추출
+    // Extract import statements
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
     let match;
     
@@ -249,7 +249,7 @@ export class HierarchicalRAG {
     return Buffer.from(path).toString('base64').replace(/[+/=]/g, '');
   }
 
-  // 계층적 검색 메서드
+  // Hierarchical search method
   async searchHierarchical(query: string, startLevel: 'directory' | 'file' | 'function' | 'class' = 'directory'): Promise<HierarchicalNode[]> {
     const results: HierarchicalNode[] = [];
     const queryLower = query.toLowerCase();

@@ -15,7 +15,7 @@ export class GuidanceManager {
       await fs.mkdir(this.guidanceDir, { recursive: true });
       await fs.mkdir(path.join(this.guidanceDir, 'metadata'), { recursive: true });
     } catch (error) {
-      console.error('Guidance 디렉토리 초기화 실패:', error);
+      console.error('Failed to initialize guidance directory:', error);
       throw error;
     }
   }
@@ -40,10 +40,10 @@ export class GuidanceManager {
       },
     };
 
-    // 유효성 검사
+    // Validation
     const validatedGuidance = GuidanceSummarySchema.parse(guidance);
 
-    // summary.json 파일로 저장
+    // Save as summary.json file
     const guidancePath = path.join(this.guidanceDir, id);
     await fs.mkdir(guidancePath, { recursive: true });
     
@@ -74,10 +74,10 @@ export class GuidanceManager {
       },
     };
 
-    // 유효성 검사
+    // Validation
     const validatedGuidance = GuidanceSummarySchema.parse(updatedGuidance);
 
-    // 파일 업데이트
+    // Update file
     const summaryPath = path.join(this.guidanceDir, params.id, 'summary.json');
     await fs.writeFile(summaryPath, JSON.stringify(validatedGuidance, null, 2));
 
@@ -114,7 +114,7 @@ export class GuidanceManager {
         new Date(b.metadata.updatedAt).getTime() - new Date(a.metadata.updatedAt).getTime()
       );
     } catch (error) {
-      console.error('Guidance 목록 조회 실패:', error);
+      console.error('Failed to retrieve guidance list:', error);
       return [];
     }
   }
@@ -125,7 +125,7 @@ export class GuidanceManager {
       await fs.rm(guidancePath, { recursive: true, force: true });
       return true;
     } catch (error) {
-      console.error('Guidance 삭제 실패:', error);
+      console.error('Failed to delete guidance:', error);
       return false;
     }
   }
